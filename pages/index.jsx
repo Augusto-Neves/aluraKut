@@ -23,7 +23,28 @@ function ProfileSidebar(props) {
   );
 }
 
+function ProfileRelationBox(props) {
+  return (
+    <ProfileRelationsBoxWrapper>
+      <h2 className="smallTitle">
+        {props.title} ({props.items.length})
+      </h2>
 
+      <ul>
+        {/* {props.map((itemAtual) => {
+                return (
+                  <li key={itemAtual.id}>
+                    <a href={`user/${itemAtual.title}`} key={itemAtual.title}>
+                      <img src={itemAtual.image} alt={`${itemAtual.title} Profile Picture`} />
+                      <span> {itemAtual.title} </span>
+                    </a>
+                  </li>
+                )
+              })} */}
+      </ul>
+    </ProfileRelationsBoxWrapper>
+  );
+}
 
 export default function Home() {
   const [comunidades, setComunidades] = React.useState([{
@@ -40,6 +61,13 @@ export default function Home() {
     'omariosouto',
     'gustavoguanabara'
   ];
+  const [followers, setFollowers] = React.useState([]);
+
+  React.useEffect(() => {
+    fetch(`https://api.github.com/users/${githubUser}/followers`)
+      .then(serverResponse => serverResponse.json())
+      .then(fullResponse => setFollowers(fullResponse))
+  }, [])
 
   function handleCreateComunity(event) {
     event.preventDefault();
@@ -56,7 +84,7 @@ export default function Home() {
 
   return (
     <>
-      <AlurakutMenu githubUser={githubUser}/>
+      <AlurakutMenu githubUser={githubUser} />
       <MainGrid>
         <div className="profileArea" style={{ gridArea: 'profileArea' }}>
           <ProfileSidebar githubUser={githubUser} />
@@ -100,6 +128,8 @@ export default function Home() {
 
         {/* Aba de Devs Favoritos */}
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
+          <ProfileRelationBox title="Seguidores" items={followers} />
+
           <ProfileRelationsBoxWrapper>
             <h2 className="smallTitle">
               Devs Favoritos ({favDevs.length})
