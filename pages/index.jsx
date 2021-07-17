@@ -1,4 +1,5 @@
-import React from "react"
+import React from "react";
+import nookies from "nookies";
 import MainGrid from "../src/components/MainGrid";
 import Box from "../src/components/Box";
 import { AlurakutMenu, AlurakutProfileSidebarMenuDefault, OrkutNostalgicIconSet } from "../src/lib/AluraCommons";
@@ -46,13 +47,9 @@ function ProfileRelationBox(props) {
   );
 }
 
-export default function Home() {
-  const [comunidades, setComunidades] = React.useState([{
-    id: '12313211',
-    title: 'Eu odeio acordar cedo',
-    image: 'https://alurakut.vercel.app/capa-comunidade-01.jpg'
-  }]);
-  const githubUser = 'Augusto-Neves';
+export default function Home(props) {
+  const [comunidades, setComunidades] = React.useState([]);
+  const githubUser = props.githubUser;
   const favDevs = [
     'diego3g',
     'maykbrito',
@@ -64,9 +61,38 @@ export default function Home() {
   const [followers, setFollowers] = React.useState([]);
 
   React.useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_DATOCMS_READ_TOKEN;
+
+    // Rquest para a API do Github
     fetch(`https://api.github.com/users/${githubUser}/followers`)
       .then(serverResponse => serverResponse.json())
       .then(fullResponse => setFollowers(fullResponse))
+
+    // API GraphQL do DatoCMS
+    fetch('https://graphql.datocms.com/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `${apiKey}`,
+      },
+      body: JSON.stringify({
+        query: `query{
+          allCommunities {
+            id
+            title
+            imageUrl
+            creatorSlug            
+          }
+        }`,
+      }),
+    })
+      .then(res => res.json())
+      .then(completeRes => {
+        const communities = completeRes.data.allCommunities;
+        setComunidades(communities)
+        console.log(communities);
+      })
   }, [])
 
   function handleCreateComunity(event) {
@@ -77,9 +103,26 @@ export default function Home() {
       title: dadosDoForm.get('title'),
       image: dadosDoForm.get('image'),
     }
+    const comunidades = {
+      title: dadosDoForm.get('title'),
+      imageUrl: dadosDoForm.get('image'),
+      creatorSlug: githubUser,
+    }
 
-    const comunidadesAtualizadas = [...comunidades, comunidade];
-    setComunidades(comunidadesAtualizadas);
+    fetch('/api/comunidades', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(comunidades),
+    })
+      .then(async function (res) {
+        const dados = await res.json();
+        console.log(dados.registroCriado);
+        const comunidade = dados.registroCriado;
+        const comunidadesAtualizadas = [...comunidades, comunidade];
+        setComunidades(comunidadesAtualizadas);
+      })
   }
 
   return (
@@ -121,7 +164,6 @@ export default function Home() {
               <button>
                 Criar Comunidade
               </button>
-
             </form>
           </Box>
         </div>
@@ -160,8 +202,8 @@ export default function Home() {
               {comunidades.map((itemAtual) => {
                 return (
                   <li key={itemAtual.id}>
-                    <a href={`user/${itemAtual.title}`} key={itemAtual.title}>
-                      <img src={itemAtual.image} alt={`${itemAtual.title} Profile Picture`} />
+                    <a href={`communities/${itemAtual.id}`}>
+                      <img src={itemAtual.imageUrl} alt={`${itemAtual.title} Profile Picture`} />
                       <span> {itemAtual.title} </span>
                     </a>
                   </li>
@@ -173,4 +215,16 @@ export default function Home() {
       </MainGrid>
     </>
   );
+}
+
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context);
+  const token = cookies.USER_TOKEN;
+
+  console.log('Cookies', token);
+  return {
+    props: {
+      githubUser: 'Augusto-Neves'
+    },
+  }
 }
